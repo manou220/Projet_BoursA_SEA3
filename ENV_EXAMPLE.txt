@@ -1,0 +1,89 @@
+# ============================================
+# Configuration de l'application BoursA
+# ============================================
+# Copiez ce fichier vers .env et modifiez les valeurs selon votre environnement
+# IMPORTANT: Ne commitez JAMAIS le fichier .env dans le repository
+
+# ============================================
+# CONFIGURATION OBLIGATOIRE EN PRODUCTION
+# ============================================
+
+# Clé secrète Flask (OBLIGATOIRE en production)
+# Générer avec: python -c "import secrets; print(secrets.token_hex(32))"
+SECRET_KEY=votre-cle-secrete-generee-ici-changez-moi
+
+# Environnement Flask (development, production, testing)
+FLASK_ENV=production
+
+# Configuration de l'application
+APP_CONFIG=production
+
+# ============================================
+# CONFIGURATION REDIS (Recommandé en production)
+# ============================================
+
+# Type de cache (SimpleCache pour dev, Redis pour production)
+CACHE_TYPE=Redis
+
+# URL Redis complète (format: redis://:password@host:port/db)
+CACHE_REDIS_URL=redis://:votre-mot-de-passe-redis@localhost:6379/0
+
+# OU configuration détaillée Redis (alternative à CACHE_REDIS_URL)
+# CACHE_REDIS_HOST=localhost
+# CACHE_REDIS_PORT=6379
+# CACHE_REDIS_DB=0
+# CACHE_REDIS_PASSWORD=votre-mot-de-passe-redis
+
+# ============================================
+# CONFIGURATION BASE DE DONNÉES
+# ============================================
+
+# URL de la base de données (OBLIGATOIRE en production avec PostgreSQL)
+# Format PostgreSQL: postgresql://user:password@host:port/dbname
+# Format SQLite: sqlite:///path/to/database.db (développement uniquement)
+# ⚠️ IMPORTANT: PostgreSQL est REQUIS en production pour supporter plusieurs instances Flask
+# DATABASE_URL=postgresql://boursa_user:votre-mot-de-passe@localhost:5432/boursa
+
+# Variables PostgreSQL pour Docker Compose (si utilisé)
+POSTGRES_DB=boursa
+POSTGRES_USER=boursa_user
+POSTGRES_PASSWORD=changez-moi-en-production
+
+# ============================================
+# CONFIGURATION SÉCURITÉ
+# ============================================
+
+# Désactiver l'inscription publique (recommandé en production)
+DISABLE_PUBLIC_REGISTRATION=false
+
+# Limites de connexion
+MAX_LOGIN_ATTEMPTS=5
+ACCOUNT_LOCKOUT_DURATION=30
+
+# ============================================
+# CONFIGURATION APIs BOURSIÈRES (Optionnel)
+# ============================================
+
+# Clé API Alpha Vantage (optionnel)
+# ALPHAVANTAGE_KEY=votre-cle-alpha-vantage
+
+# Clé API IEX Cloud (optionnel)
+# IEX_CLOUD_API_KEY=votre-cle-iex-cloud
+
+# ============================================
+# CONFIGURATION LOGGING
+# ============================================
+
+# Niveau de logging (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+LOG_LEVEL=INFO
+
+# Fichier de log (None = console seulement)
+LOG_FILE=logs/app.log
+
+# ============================================
+# CONFIGURATION DOCKER COMPOSE (si utilisé)
+# ============================================
+
+# Mot de passe Redis pour Docker Compose (OBLIGATOIRE - ne pas utiliser 'changeme' en production)
+REDIS_PASSWORD=changez-moi-en-production
+

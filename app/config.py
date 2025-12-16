@@ -57,6 +57,23 @@ class Config:
         'iex_cloud': 300  # 5 minutes
     }
     
+    # Configuration de la base de données
+    # URL de la base de données (OBLIGATOIRE en production avec PostgreSQL)
+    # Format PostgreSQL: postgresql://user:password@host:port/dbname
+    # Format SQLite: sqlite:///path/to/database.db (développement uniquement)
+    # En production, PostgreSQL est REQUIS pour supporter plusieurs instances
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or DATABASE_URL
+    
+    # Configuration du pool de connexions PostgreSQL
+    # Important pour gérer plusieurs instances Flask
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': 10,           # Nombre de connexions dans le pool
+        'max_overflow': 20,        # Connexions supplémentaires possibles
+        'pool_pre_ping': True,     # Vérifier les connexions avant utilisation
+        'pool_recycle': 3600,      # Recycler les connexions après 1 heure
+    }
+    
     # Configuration du logging
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
     LOG_FILE = os.environ.get('LOG_FILE', None)  # None = console seulement
@@ -71,7 +88,7 @@ class ProductionConfig(Config):
     """Configuration pour la production."""
     DEBUG = False
     TESTING = False
-    SESSION_COOKIE_SECURE = True
+    # SESSION_COOKIE_SECURE sera défini plus bas selon USE_HTTPS
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     PREFERRED_URL_SCHEME = 'https'
@@ -84,6 +101,16 @@ class ProductionConfig(Config):
             "SECRET_KEY doit être défini en production. "
             "Définissez-la dans les variables d'environnement ou dans le fichier .env"
         )
+    
+    # DATABASE_URL obligatoire en production (PostgreSQL requis)
+    DATABASE_URL = os.environ.get('DATABASE_URL') or os.environ.get('SQLALCHEMY_DATABASE_URI')
+    if not DATABASE_URL or 'sqlite' in DATABASE_URL.lower():
+        raise ValueError(
+            "DATABASE_URL avec PostgreSQL est OBLIGATOIRE en production. "
+            "SQLite ne supporte pas plusieurs instances Flask. "
+            "Configurez DATABASE_URL=postgresql://user:password@host:port/dbname"
+        )
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL
     
     # Cache optimisé pour la production - Redis recommandé
     cache_type = os.environ.get('CACHE_TYPE', 'Redis')
@@ -114,7 +141,10 @@ class ProductionConfig(Config):
     CACHE_DEFAULT_TIMEOUT = 600  # 10 minutes en production
     
     # Sécurité renforcée en production
-    SESSION_COOKIE_SECURE = True  # HTTPS requis
+    # SESSION_COOKIE_SECURE nécessite HTTPS
+    # Si HTTPS n'est pas disponible, désactiver temporairement avec USE_HTTPS=false
+    USE_HTTPS = os.environ.get('USE_HTTPS', 'true').lower() == 'true'
+    SESSION_COOKIE_SECURE = USE_HTTPS  # True seulement si HTTPS configuré
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     WTF_CSRF_ENABLED = True

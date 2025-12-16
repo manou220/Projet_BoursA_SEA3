@@ -208,7 +208,7 @@ def _ensure_user_table(conn):
 
 
 def _seed_sample_locations(conn):
-    """Insère des données d'exemple si la table est vide."""
+    """Insère des données d'exemple si la table est vide (SQLite)."""
     sample_data = [
         ('Abidjan', 5.3600, -4.0083, 150),
         ('Yamoussoukro (Capitale)', 6.8270, -5.2893, 85),
@@ -229,57 +229,152 @@ def _seed_sample_locations(conn):
     conn.commit()
 
 
-def save_user_location(db_path, username, latitude, longitude, active_users=1):
-    """Enregistre ou met à jour la position d'un utilisateur."""
-    conn = sqlite3.connect(db_path)
-    _ensure_user_table(conn)
-    cursor = conn.cursor()
+def _seed_sample_locations_sqlalchemy():
+    """Insère des données d'exemple si la table est vide (SQLAlchemy)."""
+    from flask import current_app
+    from app.extensions import db
+    from app.models.user_location import UserLocation
+    
+    sample_data = [
+        {'username': 'Abidjan', 'latitude': 5.3600, 'longitude': -4.0083, 'active_users': 150},
+        {'username': 'Yamoussoukro (Capitale)', 'latitude': 6.8270, 'longitude': -5.2893, 'active_users': 85},
+        {'username': 'Bouaké', 'latitude': 7.6900, 'longitude': -5.0300, 'active_users': 42},
+        {'username': 'Daloa', 'latitude': 6.8786, 'longitude': -6.4439, 'active_users': 28},
+        {'username': 'Korhogo', 'latitude': 9.4577, 'longitude': -5.6281, 'active_users': 35},
+        {'username': 'San-Pédro', 'latitude': 4.7506, 'longitude': -6.6349, 'active_users': 24},
+        {'username': 'Gagnoa', 'latitude': 6.1333, 'longitude': -5.9500, 'active_users': 22},
+        {'username': 'Duekoué', 'latitude': 6.7306, 'longitude': -7.3500, 'active_users': 18},
+        {'username': 'Soubré', 'latitude': 6.1272, 'longitude': -6.1208, 'active_users': 20},
+        {'username': 'Odienné', 'latitude': 9.5099, 'longitude': -7.5699, 'active_users': 15}
+    ]
+    
+    for data in sample_data:
+        UserLocation.save_or_update(**data)
 
-    # Un utilisateur (nom) = une entrée, on écrase l'ancienne position
-    cursor.execute("DELETE FROM user_locations WHERE username = ?", (username,))
-    cursor.execute(
-        """
-        INSERT INTO user_locations (username, latitude, longitude, active_users, timestamp)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        """,
-        (username, latitude, longitude, active_users or 1),
-    )
-    conn.commit()
-    conn.close()
 
-
-def get_real_time_users_from_db(db_path, seed=True):
-    """Récupère les données de localisation utilisateur depuis SQLite."""
+def save_user_location(db_path=None, username=None, latitude=None, longitude=None, active_users=1):
+    """
+    Enregistre ou met à jour la position d'un utilisateur.
+    
+    Utilise SQLAlchemy si disponible (PostgreSQL), sinon fallback vers SQLite.
+    Le paramètre db_path est conservé pour compatibilité mais ignoré si SQLAlchemy est utilisé.
+    
+    En production, le fallback SQLite est désactivé pour éviter les problèmes de concurrence.
+    """
     try:
+        # Essayer d'utiliser SQLAlchemy (PostgreSQL ou SQLite via SQLAlchemy)
+        from flask import current_app
+        from app.extensions import db
+        from app.models.user_location import UserLocation
+        
+        with current_app.app_context():
+            UserLocation.save_or_update(username, latitude, longitude, active_users)
+            return
+    except (RuntimeError, ImportError) as e:
+        # Vérifier si on est en production
+        import os
+        is_production = os.environ.get('FLASK_ENV') == 'production' or os.environ.get('APP_CONFIG') == 'production'
+        
+        if is_production:
+            # En production, ne pas utiliser SQLite - lever une exception
+            raise RuntimeError(
+                "SQLite ne peut pas être utilisé en production. "
+                "Configurez DATABASE_URL avec PostgreSQL. "
+                f"Erreur originale: {e}"
+            )
+        
+        # Fallback vers sqlite3 direct (uniquement en développement)
+        if db_path is None:
+            db_path = 'user_locations.db'
+        
         conn = sqlite3.connect(db_path)
         _ensure_user_table(conn)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT COUNT(*) FROM user_locations")
-        count = cursor.fetchone()[0]
-        if seed and count == 0:
-            _seed_sample_locations(conn)
-
+        # Un utilisateur (nom) = une entrée, on écrase l'ancienne position
+        cursor.execute("DELETE FROM user_locations WHERE username = ?", (username,))
         cursor.execute(
-            "SELECT username, latitude, longitude, active_users, timestamp FROM user_locations"
+            """
+            INSERT INTO user_locations (username, latitude, longitude, active_users, timestamp)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+            (username, latitude, longitude, active_users or 1),
         )
-        rows = cursor.fetchall()
+        conn.commit()
         conn.close()
 
-        return [
-            {
-                "username": row[0],
-                "lat": row[1],
-                "lon": row[2],
-                "active_users": row[3],
-                "timestamp": row[4],
-            }
-            for row in rows
-        ]
 
-    except sqlite3.Error as e:
-        print(f"Erreur de base de données: {e}")
-        return []
+def get_real_time_users_from_db(db_path=None, seed=True):
+    """
+    Récupère les données de localisation utilisateur.
+    
+    Utilise SQLAlchemy si disponible (PostgreSQL), sinon fallback vers SQLite.
+    Le paramètre db_path est conservé pour compatibilité mais ignoré si SQLAlchemy est utilisé.
+    
+    En production, le fallback SQLite est désactivé pour éviter les problèmes de concurrence.
+    """
+    try:
+        # Essayer d'utiliser SQLAlchemy (PostgreSQL ou SQLite via SQLAlchemy)
+        from flask import current_app
+        from app.extensions import db
+        from app.models.user_location import UserLocation
+        
+        with current_app.app_context():
+            locations = UserLocation.get_all_locations()
+            
+            # Seed si nécessaire et autorisé
+            if seed and len(locations) == 0:
+                _seed_sample_locations_sqlalchemy()
+                locations = UserLocation.get_all_locations()
+            
+            return [loc.to_dict() for loc in locations]
+    except (RuntimeError, ImportError) as e:
+        # Vérifier si on est en production
+        import os
+        is_production = os.environ.get('FLASK_ENV') == 'production' or os.environ.get('APP_CONFIG') == 'production'
+        
+        if is_production:
+            # En production, ne pas utiliser SQLite - lever une exception
+            raise RuntimeError(
+                "SQLite ne peut pas être utilisé en production. "
+                "Configurez DATABASE_URL avec PostgreSQL. "
+                f"Erreur originale: {e}"
+            )
+        
+        # Fallback vers sqlite3 direct (uniquement en développement)
+        if db_path is None:
+            db_path = 'user_locations.db'
+        
+        try:
+            conn = sqlite3.connect(db_path)
+            _ensure_user_table(conn)
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT COUNT(*) FROM user_locations")
+            count = cursor.fetchone()[0]
+            if seed and count == 0:
+                _seed_sample_locations(conn)
+
+            cursor.execute(
+                "SELECT username, latitude, longitude, active_users, timestamp FROM user_locations"
+            )
+            rows = cursor.fetchall()
+            conn.close()
+
+            return [
+                {
+                    "username": row[0],
+                    "lat": row[1],
+                    "lon": row[2],
+                    "active_users": row[3],
+                    "timestamp": row[4],
+                }
+                for row in rows
+            ]
+
+        except sqlite3.Error as e:
+            print(f"Erreur de base de données: {e}")
+            return []
 
 
 def make_features(data, target_col='Close'):

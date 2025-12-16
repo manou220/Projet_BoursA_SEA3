@@ -79,7 +79,7 @@ server {
     
     # Cache des assets statiques
     location /static {
-        alias /chemin/vers/projet_corrige/app/static;
+        alias /chemin/vers/votre/projet/app/static;  # MODIFIER CE CHEMIN
         expires 1y;
         add_header Cache-Control "public, immutable";
         access_log off;
@@ -87,7 +87,7 @@ server {
     
     # Cache des uploads (optionnel, attention à la sécurité)
     # location /uploads {
-    #     alias /chemin/vers/projet_corrige/uploads;
+    #     alias /chemin/vers/votre/projet/uploads;  # MODIFIER CE CHEMIN
     #     expires 7d;
     #     add_header Cache-Control "public";
     # }

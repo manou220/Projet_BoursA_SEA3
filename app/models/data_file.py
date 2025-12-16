@@ -7,4 +7,4 @@ class DataFile(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.Column(db.String(128), nullable=True)
-    metadata = db.Column(db.Text, nullable=True)
+    file_metadata = db.Column(db.Text, nullable=True)

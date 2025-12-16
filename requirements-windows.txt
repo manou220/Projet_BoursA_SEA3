@@ -1,0 +1,5 @@
+# Dépendances spécifiques à Windows
+# À installer uniquement sur Windows
+pywin32==311
+pywinpty==3.0.2
+

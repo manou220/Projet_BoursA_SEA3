@@ -3,8 +3,9 @@ Blueprint pour la cartographie et la capture de positions en temps réel.
 """
 
 from flask import Blueprint, render_template, current_app, request, jsonify
-from app.extensions import cache
+from app.extensions import cache, db
 from app.utils import get_real_time_users_from_db, save_user_location
+from app.models.user_location import UserLocation
 
 bp = Blueprint('cartographie', __name__)
 
@@ -13,8 +14,14 @@ bp = Blueprint('cartographie', __name__)
 @cache.cached(timeout=60)  # Cache court (1 min) car données en temps réel
 def index():
     """Affiche la carte interactive."""
-    db_path = current_app.config.get('DB_PATH', 'user_locations.db')
-    user_data = get_real_time_users_from_db(db_path)
+    # Utiliser SQLAlchemy si disponible, sinon fallback vers utils
+    try:
+        user_data = [loc.to_dict() for loc in UserLocation.get_all_locations()]
+    except Exception:
+        # Fallback vers l'ancienne méthode
+        db_path = current_app.config.get('DB_PATH', 'user_locations.db')
+        user_data = get_real_time_users_from_db(db_path)
+    
     return render_template("cartographie.html", initial_locations=user_data)
 
 
@@ -22,15 +29,21 @@ def index():
 def locations_api():
     """API REST pour récupérer ou enregistrer les positions utilisateurs."""
     db_path = current_app.config.get('DB_PATH', 'user_locations.db')
+    cache_key = f'locations_api_{db_path}'
 
     if request.method == 'GET':
         # Cache très court pour les données en temps réel (15 secondes)
-        cache_key = f'locations_api_{db_path}'
         cached_data = cache.get(cache_key)
         if cached_data is not None:
             return jsonify({"users": cached_data})
         
-        user_data = get_real_time_users_from_db(db_path)
+        # Utiliser SQLAlchemy si disponible
+        try:
+            user_data = [loc.to_dict() for loc in UserLocation.get_all_locations()]
+        except Exception:
+            # Fallback vers l'ancienne méthode
+            user_data = get_real_time_users_from_db(db_path)
+        
         cache.set(cache_key, user_data, timeout=15)
         return jsonify({"users": user_data})
 
@@ -51,11 +64,16 @@ def locations_api():
         return jsonify({"error": "Latitude/longitude invalides"}), 400
 
     try:
-        save_user_location(db_path, username, lat, lon, active_users)
+        # Utiliser SQLAlchemy si disponible
+        try:
+            UserLocation.save_or_update(username, lat, lon, active_users)
+        except Exception:
+            # Fallback vers l'ancienne méthode
+            save_user_location(db_path, username, lat, lon, active_users)
+        
         # Invalider le cache après une mise à jour
-        cache_key = f'locations_api_{db_path}'
         cache.delete(cache_key)
-    except Exception as exc:  # pragma: no cover - journalisation côté serveur
+    except Exception as exc:
         current_app.logger.exception("Impossible d'enregistrer la position", exc_info=exc)
         return jsonify({"error": "Erreur lors de l'enregistrement"}), 500
 

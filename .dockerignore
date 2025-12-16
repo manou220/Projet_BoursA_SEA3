@@ -1,0 +1,88 @@
+# Fichiers et dossiers à exclure du contexte Docker
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environnements virtuels
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Fichiers sensibles
+.env
+.env.local
+*.key
+*.pem
+*.crt
+
+# Logs
+logs/*.log
+*.log
+
+# Base de données locale
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads (seront montés comme volume)
+uploads/*
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Documentation
+docs/_build/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Modèles ML (seront montés comme volume si nécessaire)
+# app/models/*.joblib
+
+# Fichiers temporaires
+*.tmp
+*.bak
+*.swp
+
+# Node (si présent)
+node_modules/
+npm-debug.log
+
+# Autres
+*.md
+!README.md
+.gitattributes
+

@@ -151,3 +151,28 @@ Thumbs.db
 *.joblib
 *.pkl
 *.pickle
+
+# Logs (garder la structure mais pas les fichiers)
+logs/*.log
+logs/jobs/*.json
+!logs/.gitkeep
+
+# Fichiers sensibles
+.env
+.env.local
+*.key
+*.pem
+*.crt
+
+# Base de données locale (développement)
+user_locations.db
+
+# Certificats SSL
+nginx/ssl/
+*.csr
+
+# Fichiers temporaires
+*.tmp
+*.bak
+*.swp
+.cache/

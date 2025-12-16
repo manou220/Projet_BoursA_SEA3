@@ -1,0 +1,28 @@
+# Configuration Render pour BoursA
+# Documentation: https://render.com/docs/docker
+
+services:
+  - type: web
+    name: boursa-app
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    healthCheckPath: /health
+    autoDeploy: true
+
+  - type: pspg
+    name: boursa-postgres
+    plan: starter
+    databaseName: boursa
+    databaseUser: boursa_user
+
+  - type: redis
+    name: boursa-redis
+    plan: starter
+

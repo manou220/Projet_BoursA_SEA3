@@ -10,6 +10,15 @@ from concurrent.futures import ThreadPoolExecutor
 # SQLAlchemy utilisé par les modèles optionnels (ex: TestHistory)
 db = SQLAlchemy()
 
+# Flask-Migrate pour les migrations de base de données
+migrate = None
+try:
+    from flask_migrate import Migrate
+    migrate = Migrate()
+except ImportError:
+    # flask-migrate n'est pas installé, migrate reste None
+    migrate = None
+
 # Cache pour améliorer les performances
 cache = Cache()
 

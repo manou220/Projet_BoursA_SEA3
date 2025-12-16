@@ -44,8 +44,18 @@ def create_app(config_name=None):
     # Chemin des modèles ML - utiliser app/models/ pour cohérence
     app.config['MODELS_DIR'] = os.path.join(APP_DIR, 'models')
 
-    # SQLAlchemy (utilisé par certains modèles) — défaut sur la base locale
-    app.config.setdefault('SQLALCHEMY_DATABASE_URI', f"sqlite:///{app.config['DB_PATH']}")
+    # SQLAlchemy - Utiliser DATABASE_URL si fourni, sinon SQLALCHEMY_DATABASE_URI, sinon SQLite par défaut
+    database_url = os.environ.get('DATABASE_URL') or os.environ.get('SQLALCHEMY_DATABASE_URI')
+    if database_url:
+        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    else:
+        # Fallback SQLite pour développement uniquement
+        app.config.setdefault('SQLALCHEMY_DATABASE_URI', f"sqlite:///{app.config['DB_PATH']}")
+        if config_name == 'production':
+            app.logger.warning(
+                "SQLite utilisé en production ! Ce n'est pas recommandé. "
+                "Configurez DATABASE_URL avec PostgreSQL pour la production."
+            )
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
     
     # Créer les dossiers nécessaires
@@ -55,19 +65,24 @@ def create_app(config_name=None):
     # Configurer le logging
     configure_logging(app)
     
-    # Initialiser la base de données
-    from app.utils import get_real_time_users_from_db
-    # Seed de démonstration seulement si autorisé par la config
-    # La valeur par défaut est définie dans la classe Config
+    # Initialiser la base de données (seed des localisations si nécessaire)
+    # Cette partie est maintenant gérée dans init_users_table et init_db.py
+    # Conservée pour compatibilité avec l'ancien code
     seed_enabled = app.config.get('SEED_SAMPLE_LOCATIONS', True)
-    try:
-        get_real_time_users_from_db(app.config['DB_PATH'], seed=seed_enabled)
-    except Exception as e:
-        app.logger.error(f"Erreur lors de l'initialisation de la base de données: {e}")
+    if seed_enabled:
+        try:
+            from app.utils import get_real_time_users_from_db
+            get_real_time_users_from_db(app.config.get('DB_PATH', 'user_locations.db'), seed=seed_enabled)
+        except Exception as e:
+            app.logger.debug(f"Initialisation des localisations (peut être ignorée si SQLAlchemy est utilisé): {e}")
     
     # Initialiser les extensions
-    from app.extensions import db, cache, login_manager
+    from app.extensions import db, cache, login_manager, migrate
     db.init_app(app)
+    
+    # Initialiser Flask-Migrate si disponible
+    if migrate:
+        migrate.init_app(app, db)
     
     # Initialiser Flask-Login
     login_manager.init_app(app)
@@ -120,13 +135,27 @@ def create_app(config_name=None):
                 response.cache_control.must_revalidate = True
         return response
     
-    # Initialiser la table des utilisateurs
+    # Initialiser les tables de la base de données
     with app.app_context():
         try:
             from app.models.user import init_users_table
             init_users_table()
+            
+            # Importer tous les modèles pour s'assurer qu'ils sont enregistrés
+            from app.models.data_file import DataFile
+            from app.models.test_history import TestHistory
+            from app.models.user_location import UserLocation
+            
+            # Créer les tables si elles n'existent pas (seulement pour développement)
+            # En production, utiliser les migrations Flask-Migrate
+            if config_name == 'development':
+                db.create_all()
         except Exception as e:
-            app.logger.warning(f"Erreur lors de l'initialisation de la table utilisateurs: {e}")
+            app.logger.warning(f"Erreur lors de l'initialisation de la base de données: {e}")
+    
+    # Enregistrer les gestionnaires d'erreurs
+    from app.error_handlers import register_error_handlers
+    register_error_handlers(app)
     
     # Enregistrer les blueprints
     register_blueprints(app)
