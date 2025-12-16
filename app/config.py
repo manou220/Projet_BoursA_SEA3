@@ -114,7 +114,8 @@ class ProductionConfig(Config):
     
     # Cache optimisé pour la production - Redis recommandé
     cache_type = os.environ.get('CACHE_TYPE', 'Redis')
-    redis_url = os.environ.get('CACHE_REDIS_URL')
+    # Render fournit REDIS_URL, mais on peut aussi utiliser CACHE_REDIS_URL
+    redis_url = os.environ.get('CACHE_REDIS_URL') or os.environ.get('REDIS_URL')
     
     if cache_type == 'Redis':
         if redis_url:

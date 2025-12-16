@@ -47,16 +47,17 @@ RUN mkdir -p uploads logs app/models && \
 # Passer à l'utilisateur non-root
 USER appuser
 
-# Exposer le port 5000
+# Exposer le port (utilise PORT de l'environnement ou 5000 par défaut)
 EXPOSE 5000
 
 # Health check (utilise curl qui est disponible dans l'image alpine ou wget)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=5)" || exit 1
+    CMD python -c "import os, urllib.request; port = os.environ.get('PORT', '5000'); urllib.request.urlopen(f'http://localhost:{port}/health', timeout=5)" || exit 1
 
 # Entrypoint pour initialiser la base avant de démarrer
 ENTRYPOINT ["/entrypoint.sh"]
 
-# Commande par défaut (peut être surchargée dans docker-compose)
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "--access-logfile", "-", "--error-logfile", "-", "wsgi:app"]
+# Commande par défaut (utilise PORT de l'environnement ou 5000 par défaut)
+# Render fournit la variable PORT automatiquement
+CMD ["sh", "-c", "gunicorn -w 4 -b 0.0.0.0:${PORT:-5000} --access-logfile - --error-logfile - wsgi:app"]
 

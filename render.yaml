@@ -1,5 +1,8 @@
 # Configuration Render pour BoursA
 # Documentation: https://render.com/docs/docker
+# 
+# IMPORTANT: Render définit automatiquement la variable PORT
+# Ne pas définir PORT manuellement dans envVars
 
 services:
   - type: web
@@ -11,8 +14,11 @@ services:
     envVars:
       - key: FLASK_ENV
         value: production
-      - key: PORT
-        value: 10000
+      - key: APP_CONFIG
+        value: production
+      # SECRET_KEY doit être défini dans l'interface Render (Environment)
+      # DATABASE_URL sera fourni automatiquement par Render pour le service PostgreSQL
+      # REDIS_URL sera fourni automatiquement par Render pour le service Redis
     healthCheckPath: /health
     autoDeploy: true
 
@@ -21,8 +27,10 @@ services:
     plan: starter
     databaseName: boursa
     databaseUser: boursa_user
+    # Render génère automatiquement DATABASE_URL et l'injecte dans le service web
 
   - type: redis
     name: boursa-redis
     plan: starter
+    # Render génère automatiquement REDIS_URL et l'injecte dans le service web
 
