@@ -25,5 +25,12 @@ python scripts/init_db.py || {
 
 # Démarrer Gunicorn
 echo "🚀 Démarrage de Gunicorn..."
+echo "📍 Port: ${PORT:-5000}"
+echo "🌐 Écoute sur: 0.0.0.0:${PORT:-5000}"
+
+# S'assurer que PORT est exporté pour que la commande CMD puisse l'utiliser
+export PORT=${PORT:-5000}
+
+# Exécuter la commande passée (qui devrait être la commande Gunicorn)
 exec "$@"
 

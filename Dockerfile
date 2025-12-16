@@ -36,9 +36,10 @@ RUN pip install --upgrade pip && \
 # Copier le code de l'application
 COPY . .
 
-# Copier et rendre exécutable le script d'entrypoint
+# Copier et rendre exécutable les scripts
 COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY scripts/start.sh /start.sh
+RUN chmod +x /entrypoint.sh /start.sh
 
 # Créer les répertoires nécessaires avec les bonnes permissions
 RUN mkdir -p uploads logs app/models && \
@@ -47,7 +48,7 @@ RUN mkdir -p uploads logs app/models && \
 # Passer à l'utilisateur non-root
 USER appuser
 
-# Exposer le port (utilise PORT de l'environnement ou 5000 par défaut)
+# Exposer le port (Render utilise des ports dynamiques, mais on expose 5000 par défaut)
 EXPOSE 5000
 
 # Health check (utilise curl qui est disponible dans l'image alpine ou wget)
@@ -57,7 +58,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Entrypoint pour initialiser la base avant de démarrer
 ENTRYPOINT ["/entrypoint.sh"]
 
-# Commande par défaut (utilise PORT de l'environnement ou 5000 par défaut)
+# Commande par défaut
+# Utiliser le script start.sh qui gère correctement le PORT pour Render
 # Render fournit la variable PORT automatiquement
-CMD ["sh", "-c", "gunicorn -w 4 -b 0.0.0.0:${PORT:-5000} --access-logfile - --error-logfile - wsgi:app"]
+CMD ["/start.sh"]
 
